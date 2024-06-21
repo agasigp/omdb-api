@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Services\Omdb\OmdbApiService;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Contracts\Foundation\Application;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +21,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        $this->app->singleton(OmdbApiService::class, function (Application $app) {
+            return new OmdbApiService();
+        });
     }
 }
