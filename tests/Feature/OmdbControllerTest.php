@@ -1,7 +1,6 @@
 <?php
 
 use App\Services\Omdb\OmdbApiService;
-use Illuminate\Testing\Fluent\AssertableJson;
 
 test('it returns film based on IMDB id', function () {
     $responseData = [
@@ -54,14 +53,64 @@ test('it returns film based on IMDB id', function () {
         'Accept' => 'application/json',
     ])
         ->get(
-            '/movie/detail/?imdbID=tt12037194',
+            '/movie/detail/?imdbId=tt12037194',
         );
 
     $response->assertStatus(200)
         ->assertJsonIsObject()
+        ->assertJson([
+            'message' => 'Ok',
+        ])
         ->assertJsonStructure([
             'data' => [
                 'title', 'year', 'imdbId', 'type', 'poster',
-            ]
+            ],
+            'message'
+        ]);
+});
+
+test('it returns error 404 when imdbId is invalid', function () {
+    $this->mock(OmdbApiService::class)
+        ->shouldReceive('getFilmById')
+        ->once()
+        ->with('tt120371')
+        ->andReturn([
+            'data' => [
+                'Response' => 'False',
+                'Error' => 'Incorrect IMDb ID.',
+            ],
+            'info' => []
+        ]);
+
+    $response = $response = $this->withHeaders([
+        'Accept' => 'application/json',
+    ])
+        ->get(
+            '/movie/detail/?imdbId=tt120371',
+        );
+
+    $response->assertStatus(404)
+        ->assertJsonIsObject()
+        ->assertJson([
+            'message' => 'Incorrect IMDb ID.',
+            'data' => [],
+        ]);
+});
+
+test('it returns error 422 when imdbId is empty', function () {
+    $response = $response = $this->withHeaders([
+        'Accept' => 'application/json',
+    ])
+        ->get(
+            '/movie/detail/?imdbId=',
+        );
+
+    $response->assertStatus(422)
+        ->assertJsonIsObject()
+        ->assertJson([
+            'message' => 'The imdb id field is required.',
+            'errors' => [
+                'imdbId' => ['The imdb id field is required.']
+            ],
         ]);
 });

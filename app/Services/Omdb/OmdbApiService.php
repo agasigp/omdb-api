@@ -36,7 +36,7 @@ class OmdbApiService
 
         $response = curl_exec($this->curl);
 
-        if (!curl_errno($this->curl)) {
+        if (curl_errno($this->curl) === 500) {
             $info = curl_getinfo($this->curl);
         } else {
             $info = [];
