@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Services\Omdb\OmdbApiService;
+use Illuminate\Validation\Rule;
 
 class OmdbController extends Controller
 {
@@ -42,6 +43,60 @@ class OmdbController extends Controller
                 'type' => $data['Type'],
                 'poster' => $data['Poster'],
             ]
+        ]);
+    }
+
+    public function getMovies(Request $request, OmdbApiService $omdbApiService)
+    {
+        $validate = $request->validate([
+            'title' => 'required',
+            'type' => ['required', Rule::in(['movie', 'series', 'episode'])],
+            'page' => 'required|numeric',
+            'year' => 'nullable|numeric|min_digits:4'
+        ]);
+
+        $response = $omdbApiService->getMovies(
+            $validate['title'],
+            request('year'),
+            $validate['type'],
+            $validate['page'],
+        );
+
+        if (isset($response['data']['Response']) && $response['data']['Response'] === 'False') {
+            return response()->json([
+                'message' => 'Ok',
+                'data' => [
+                    'data' => [],
+                    'totalResults' => 0
+                ]
+            ]);
+        }
+
+        $dataCollection = collect($response['data']['Search']);
+        $data = $dataCollection->map(function(array $item, $key) {
+            return [
+                'title' => $item['Title'],
+                'year' => $item['Year'],
+                'imdbId' => $item['imdbID'],
+                'type' => $item['Type'],
+                'poster' => $item['Poster'],
+            ];
+        });
+        $info = $response['info'];
+
+        if (isset($info['http_code']) && $data['http_code'] !== 200) {
+            return response()->json([
+                'message' => 'Error get data from omdb Api',
+                'data' => []
+            ], 500);
+        }
+
+        return response()->json([
+            'message' => 'Ok',
+            'data' => [
+                'data' => $data->all(),
+                'totalResults' => $response['data']['totalResults']
+            ],
         ]);
     }
 }
