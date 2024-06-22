@@ -3,11 +3,18 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Services\Omdb\OmdbApiService;
 use Illuminate\Validation\Rule;
+use App\Services\Omdb\OmdbApiService;
+use Illuminate\Support\Facades\Cache;
 
 class OmdbController extends Controller
 {
+    public function getPopularMovies()
+    {
+        // Not yet implemented because omdbapi doesn't have api for getting popular movies
+        // https://www.omdbapi.com/#parameters
+    }
+
     public function detailMovie(Request $request, OmdbApiService $omdbApiService)
     {
         $request->validate([
@@ -34,14 +41,18 @@ class OmdbController extends Controller
             ], 500);
         }
 
+        $movie = Cache::remember('movie', 60, function () use ($data) {
+            return $data;
+        });
+
         return response()->json([
             'message' => 'Ok',
             'data' => [
-                'title' => $data['Title'],
-                'year' => $data['Year'],
-                'imdbId' => $data['imdbID'],
-                'type' => $data['Type'],
-                'poster' => $data['Poster'],
+                'title' => $movie['Title'],
+                'year' => $movie['Year'],
+                'imdbId' => $movie['imdbID'],
+                'type' => $movie['Type'],
+                'poster' => $movie['Poster'],
             ]
         ]);
     }
@@ -82,6 +93,11 @@ class OmdbController extends Controller
                 'poster' => $item['Poster'],
             ];
         });
+
+        $movies = Cache::remember('movies', 60, function () use ($data) {
+            return $data->all();
+        });
+
         $info = $response['info'];
 
         if (isset($info['http_code']) && $data['http_code'] !== 200) {
@@ -94,7 +110,7 @@ class OmdbController extends Controller
         return response()->json([
             'message' => 'Ok',
             'data' => [
-                'data' => $data->all(),
+                'data' => $movies,
                 'totalResults' => $response['data']['totalResults']
             ],
         ]);
